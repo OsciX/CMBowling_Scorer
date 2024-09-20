@@ -8,12 +8,90 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <forward_list>
 
 #ifdef _WIN32
 	#define CLEAR() system("cls");
 #elif __linux__
 	#define CLEAR() system("clear");
 #endif
+
+
+
+class Player
+{
+	private:
+		std::string playerName;
+		std::uint16_t totalScore;
+		std::forward_list <uint8_t> ballScores;
+		std::forward_list <uint8_t>::iterator prevBall;
+
+		std::atomic_bool ball;
+
+
+	public:
+		
+		Player(std::string playerName)
+		{
+			this->playerName = playerName;
+			this->totalScore = 0;
+			this->ball = 0;
+		}
+
+		uint16_t score() { return totalScore; }
+		std::string name() { return playerName; }
+
+		uint8_t bowl(uint8_t pins) {
+			
+			// set prevBall before we push_front, so it retains the previous front
+			prevBall = ballScores.begin();
+			// insert the new score at the front
+			ballScores.push_front(pins);
+
+
+			switch (pins) {
+				case 0:
+					return ' ';
+				case 1:
+				case 2:
+				case 3:
+				case 4:
+				case 5:
+				case 6:
+				case 7:
+				case 8:
+				case 9:
+					if (ball == 1 && pins + *prevBall == 10) {
+						ball = !ball;
+						return '/';
+					}
+					else {
+						ball = !ball;
+						return pins + '0';
+					}
+				case 10:
+					// do not increment ball here, we are moving directly to the next frame
+					return 'X';
+
+				default:
+					return ' ';
+			}
+
+		}
+
+		
+
+
+	
+
+
+};
+
+
+
+
+
+
 
 int main()
 {
@@ -22,38 +100,41 @@ int main()
 	int nBowls_Per_Frame = 3;
 	int nNumBowls = 0;
 
-	std::vector <std::string> names;
+	std::forward_list <Player*> players;
+	std::forward_list <Player*>::iterator currentPlayer;
 
 	printf ("Enter the name of player %d, if you are done entering names press enter again\n"
 			"Note the name of the player can not exceed 10 characters.\n", nPlayerNum+1);
 	
-	std::string name;
 
+	std::string name;
 	do {
 			// getline grabs a string from cin, and discards any preexisting values in the variable
 			std::getline(std::cin, name);
 
 			if (!name.empty()) {
-				// push_back creates a copy, meaning we can reuse name on the next loop
-				names.push_back(name);
+				Player* p = new Player(name);
+				players.push_front(p);
 				nPlayerNum += 1;
 			}
 
 	} while (!name.empty());
 
+	// we pushed to the front, so player names need to be reversed.
+	players.reverse();
+
 	CLEAR();
 
 	int n = 1;
 	// for each value in the vector, print it to name. allow us to use n to count. 
-	std::for_each(names.begin(), names.end(), [&n](std::string name) {
-		printf("Player %d: %s\n", n, name.c_str());
+	std::for_each(players.begin(), players.end(), [&n](Player* p) {
+		printf("Player %d: %s\n", n, (*p).name().c_str());
 		n++;
 	});
 
 	// extra newline for good luck :D
 	putchar('\n');
-
-
+/*
 	// Total Number of Elements in 1D Array
 	int nTotalElements = (nPlayerNum * nFrames * nBowls_Per_Frame);
 	
@@ -166,16 +247,6 @@ int main()
 
 	// Deallocate the memory for 1D array
 	delete[] scores;
-
+	*/
 	return 0;
 }
-
-int scanner(const char* data, char* buffer, size_t buflen)
-{
-	char format[32];
-	if (buflen == 0)
-		return 0;
-	snprintf(format, sizeof(format), "%%%ds", (int)(buflen - 1));
-	return sscanf(data, format, buffer);
-}
-
