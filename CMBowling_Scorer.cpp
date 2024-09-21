@@ -22,8 +22,8 @@ private:
 	std::uint16_t playerScore;
 	bool playerBall;
 	std::forward_list <uint8_t> ballScores;
-
-	std::forward_list <uint8_t>::iterator it;
+	std::forward_list <uint8_t> formatted;
+	std::forward_list <uint8_t>::const_iterator pc = formatted.before_begin();
 	std::forward_list <uint8_t>::iterator prevBall;
 
 
@@ -43,19 +43,23 @@ public:
 	bool ball() { return playerBall; }
 
 
+	std::forward_list <uint8_t>	format() {
+		return formatted;
+	}
+
+	std::forward_list <uint8_t>::const_iterator iterator() {
+		return ballScores.before_begin();
+	}
+
+
 	// return list of all numbers in list.
 	// theory: instead of dynamically rendering the string and calculating the score
 	// what if we maintain the score as a forward list of chars, and the score as an int that's added to?
 	// characters could be placed in correct order (instead of push_front/reversing) with insert_after, which has constant complexity
 
-	std::forward_list <uint8_t> scores() {
-		std::forward_list <uint8_t> ballScores2 = ballScores;
-		ballScores2.reverse();
-		return ballScores2;
-
-	}
-
 	char bowl(uint8_t pins) {
+
+		
 
 		// set prevBall before we push_front, so it retains the previous front
 		prevBall = ballScores.begin();
@@ -64,7 +68,11 @@ public:
 
 
 		switch (pins) {
+
 		case 0:
+			playerBall = !playerBall;
+			pc = formatted.emplace_after(pc, '-');
+			return '-';
 		case 1:
 		case 2:
 		case 3:
@@ -76,18 +84,23 @@ public:
 		case 9:
 			if (playerBall == 1 && pins + *prevBall == 10) {
 				playerBall = !playerBall;
+				pc = formatted.emplace_after(pc, '/');
 				return '/';
 			}
 			else {
 				playerBall = !playerBall;
+				pc = formatted.emplace_after(pc, pins + '0');
 				return pins + '0';
 			}
 		case 10:
 			// do not increment ball here, we are moving directly to the next frame
+			pc = formatted.emplace_after(pc, 'X');
+			pc = formatted.emplace_after(pc, '-');
 			return 'X';
 
 		default:
-			return ' ';
+			return NULL;
+
 		}
 
 	}
@@ -159,64 +172,61 @@ int main()
 	
 	for (uint8_t frame = 0; frame < 10; frame++)
 	{
+		std::for_each(players.begin(), players.end(), [&frame, &points, &input](Player* currentPlayer) {
 
-		do {
+			do {
+				CLEAR();
+				// redraw
+				printf(" %s \n", currentPlayer->name().c_str());
+				printf("Ball: %d \n", currentPlayer->ball() + 1);
+				printf("Frame: %d \n", frame);
+
+				std::forward_list <uint8_t> myScores = currentPlayer->format();
+
+				std::for_each(myScores.begin(), myScores.end(), [](const int& n) {
+					printf("%c ", n);
+					});
+
+				printf("\n\n\nEnter: ");
+
+
+				// printf("%s\n\n", .c_str());
+
+
+				// getline grabs a string from cin, and discards any preexisting values in the variable
+				std::getline(std::cin, input);
+
+				points = atoi(input.c_str());
+				currentPlayer->bowl(points);
+
+
+
+
+			} while (currentPlayer->ball());
+
 			CLEAR();
-			// redraw
-			printf(" %s \n", (*currentPlayer)->name().c_str());
-			printf("Ball: %d \n", (*currentPlayer)->ball() + 1);
+
+			printf(" %s \n", currentPlayer->name().c_str());
+			printf("Ball: %d \n", currentPlayer->ball() + 1);
 			printf("Frame: %d \n", frame);
 
-			std::forward_list <uint8_t> myScores = (*currentPlayer)->scores();
+			std::forward_list <uint8_t> myScores = currentPlayer->format();
 
 			std::for_each(myScores.begin(), myScores.end(), [](const int& n) {
-				printf("%d ", n); 
-			});
 
-			printf("\n\n\nEnter: ");
+				// printing the raw number. Figure out how to print the correct characters, like the bowl function return
 
+				printf("%c ", n);
+				});
 
-			// printf("%s\n\n", .c_str());
+			// wait
+			printf("\n\n\n");
+			std::getchar();
 
+			}
+		);
 
-			// getline grabs a string from cin, and discards any preexisting values in the variable
-			std::getline(std::cin, input);
-			points = atoi(input.c_str());
-
-			(*currentPlayer)->bowl(points);
-
-
-
-
-		} while ((*currentPlayer)->ball());
-		
-		CLEAR();
-
-		printf(" %s \n", (*currentPlayer)->name().c_str());
-		printf("Ball: %d \n", (*currentPlayer)->ball() + 1);
-		printf("Frame: %d \n", frame);
-
-		std::forward_list <uint8_t> myScores = (*currentPlayer)->scores();
-
-		std::for_each(myScores.begin(), myScores.end(), [](const int& n) {
-
-			// printing the raw number. Figure out how to print the correct characters, like the bowl function return
-
-			printf("%d ", n);
-		});
-
-		// wait
-		printf("\n\n\n");
-		std::getchar();
-
-		currentPlayer++;
-
-		if (currentPlayer == players.end()) {
-			currentPlayer = players.begin();
-		}
 	}
-	
-
 /*
 	// Function used to get the index of 1D Array
 	auto getIndex = [nFrames, nBowls_Per_Frame](int player, int frame, int bowl) {
